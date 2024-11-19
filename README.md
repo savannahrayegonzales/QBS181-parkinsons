@@ -1,3 +1,17 @@
+## Potential State-level Predictors of Parkinson's Disease Mortality Rates
+### Final Project for QBS181 Data Wrangling
+### Savannah Gonzales, Yifei Gao, Amy Wang, Kath Paul 
+
+**Aim 1: Assess the impact of neurologist workforce measures on Parkinson’s Disease mortality rates.** \
+1.1 Calculate state-level neurologist supply and examine the association with PD mortality rates. \
+1.2 Quantify Medicare-accepting neurologist availability and determine the extent to which it affects PD mortality rates.
+
+**Aim 2: Explore agricultural variables and their influence on Parkinson’s Disease mortality rates.** \
+2.1 Investigate the relationship between PD mortality rates and total agricultural chemical expenditure per state. \
+2.2 Evaluate the association between the amount of acreage treated with three types of pesticides and PD mortality rates.
+
+### Repository Files
+
 **QBS181\_ProjectAim1.pdf**  
 Format: PDF (knitted from R Markdown, .rmd file also provided)  
 Purpose:
