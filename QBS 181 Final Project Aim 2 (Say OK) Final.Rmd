@@ -1,0 +1,339 @@
+---
+title: "QBS 181 Final Project Aim 2 (Say OK)"
+author: "Say OK"
+date: "2024-10-28"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Libraries
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(tidyr)
+library(readxl)
+library(ppcor)
+library(lme4)
+library(knitr)
+```
+
+
+
+# I. Load and Merge Datasets
+
+## 1. Load the cleaned agricultural dataset (from Excel worksheet)
+Please refer to the excel file for details on data cleaning, calculations, and exploratory steps.
+We created a sheet named "R", which includes all columns needed for input into R.
+```{r}
+# Set working directory ("Session" --> "Set Working Directory")
+# Input the sheet named "R" in the Excel file
+ag_data <- read_excel("/Users/violet/Documents/QBS Fall 2024/QBS 181/Final Project/Data/Ag_Data_Clean.xlsx", sheet = "R")
+
+head(ag_data)
+dim(ag_data)
+```
+
+
+## 2. Load 2022 Parkinson mortality rate data (downloaded from CDC)
+Longitudinal data on Parkinson's disease mortality rate over years can be downloaded directly from CDC.
+All rates are age-adjusted mortality rates and represent the number of deaths per 100,000 total population.
+```{r}
+# Set working directory ("Session" --> "Set Working Directory")
+# Input the sheet named "R" in the Excel file
+mortality <- read.csv("/Users/violet/Documents/QBS Fall 2024/QBS 181/Final Project/Data/Parkinson_Mortality_2022.csv")
+# Remove the last column (unnecessary URL)
+mortality <- mortality[, -ncol(mortality)]
+
+head(mortality)
+dim(mortality)
+```
+
+Filter to keep 2022
+```{r}
+# Filter to keep year == 2022
+mortality <- mortality %>%
+  filter(YEAR == 2022)
+
+dim(mortality)
+```
+
+
+## 3. Combine agricultural dataset with 2022 Parkinson mortality rate data
+Create a conversion table as state is presented as full name in ag_data whereas it is presented as abbreviation in the mortality.
+```{r}
+# Create the conversion table as a data frame
+state_abbreviations <- data.frame(
+  State = toupper(c("Alabama", "Alaska", "Arizona", "Arkansas", "California", 
+                    "Colorado", "Connecticut", "Delaware", "Florida", "Georgia",
+                    "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", 
+                    "Kentucky", "Louisiana", "Maine", "Maryland", 
+                    "Massachusetts", "Michigan", "Minnesota", "Mississippi", 
+                    "Missouri", "Montana", "Nebraska", "Nevada", 
+                    "New Hampshire", "New Jersey", "New Mexico", "New York", 
+                    "North Carolina", "North Dakota", "Ohio", "Oklahoma", 
+                    "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
+                    "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", 
+                    "Virginia", "Washington", "West Virginia", "Wisconsin", 
+                    "Wyoming")),
+  State_Abbrev = c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", 
+                  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", 
+                  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", 
+                  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
+                  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY")
+)
+head(state_abbreviations)
+```
+
+Merge the datasets
+```{r}
+ag_data <- merge(ag_data, state_abbreviations, by.x = "State_Name", by.y = "State", all.x = TRUE)
+df <- merge(ag_data, mortality, by.x = "State_Abbrev", by.y = "STATE", all.x = TRUE)
+
+head(df)
+```
+
+
+
+# II. Aim 2a: Investigate the relationship between PD mortality rates and total agricultural chemical expenditure per state.
+
+## 1. PD mortality rates vs. Total agricultural chemical expenditure per state
+a. scatter plot visualization
+```{r}
+ggplot(df, aes(x = Total_Chemical_Expenditure, y = RATE)) +
+  geom_point(color = "blue", alpha = 0.7) +
+  geom_smooth(method = "lm", color = "red", se = TRUE) + 
+  labs(title = "Scatter Plot of PD Mortality Rates vs. Total Chemical Expenditure",
+       x = "Total Agricultural Chemical Expenditure",
+       y = "PD Mortality Rate (per 100,000 population)") +
+  theme_minimal()
+```
+
+b. Spearman's rank correlation for statistical testing
+```{r}
+spearman_correlation <- cor(df$Total_Chemical_Expenditure, df$RATE, method = "spearman", use = "complete.obs")
+spearman_correlation
+```
+Result: There is a weak positive monotonic relationship between Total Chemical Expenditure and Mortality RATE.
+
+
+## 2.PD mortality rates vs. Chemical Expenditure per Farmland Acres per State
+a. scatter plot visualization
+```{r}
+ggplot(df, aes(x = Chemical_Expenditure_per_Acres, y = RATE)) +
+  geom_point(color = "blue", alpha = 0.7) +
+  geom_smooth(method = "lm", color = "red", se = TRUE) + 
+  labs(title = "Scatter Plot of PD Mortality Rates vs. Chemical Expenditure per Farmland Acres",
+       x = "Chemical Expenditure per Farmland Acres",
+       y = "PD Mortality Rate (per 100,000 population)") +
+  theme_minimal()
+```
+
+b. Spearman's rank correlation for statistical testing
+```{r}
+spearman_correlation <- cor(df$Chemical_Expenditure_per_Acres, df$RATE, 
+                            method = "spearman", use = "complete.obs")
+spearman_correlation
+```
+Result: There is a weak inverse relationship, meaning that as agricultural chemical expenditure rises, Parkinson’s mortality rate slightly decreases.
+
+
+## 3. PD mortality rates vs. Total Chemical Expenditure Considering Geographic Regions
+a. boxplot and heatmap
+```{r}
+# Box Plot: PD mortality rates by Geographic Region
+ggplot(df, aes(x = Geographic_Region, y = RATE)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  labs(title = "Box Plot of PD Mortality Rates by Geographic Region",
+       x = "Geographic Region",
+       y = "PD Mortality Rate (per 100,000 population)") +
+  theme_minimal()
+
+# Heatmap: PD mortality rate by Geographic Divisions and Total Chemical Expenditures
+## Divide the Chemical_Expenditure_per_Acres into quintile
+df <- df %>%
+  mutate(Expenditure_Bin = cut(Total_Chemical_Expenditure, breaks = 5))
+## Plot
+ggplot(df, aes(x = Geographic_Division, y = Expenditure_Bin, fill = RATE)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Heatmap of PD Mortality Rates by Region and Expenditure Levels",
+       x = "Geographic Region",
+       y = "Total Chemical Expenditure (Binned)",
+       fill = "PD Mortality Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+b. Fit the mixed-effects model
+Since the Geographic Region is a higher-level above State, we can use a mixed-effects model to show a more accurate relationship
+```{r}
+# Fit the mixed-effects model
+# Assuming RATE is the dependent variable 
+# and Total_Chemical_Expenditure is the main predictor
+model <- lmer(RATE ~ Total_Chemical_Expenditure + (1 | Geographic_Region)
+              , data = df)
+
+# Summary of the model
+summary(model)
+
+# Check normality of residuals of the dependent variable
+## Fit a simple linear regression model
+model <- lm(RATE ~ Total_Chemical_Expenditure, data = df)
+summary(model)
+## Extract residuals
+residuals <- resid(model)
+qqnorm(residuals)
+qqline(residuals, col = "red")
+```
+Interpretation: The coefficient indicates that for each dollar increase in Total Chemical Expenditure, the RATE (PD mortality rate) is expected to increase by 3.709e-10 per 100,000 person. In other word, for each billion-dollar increase in Total Chemical Expenditure, the RATE (PD mortality rate) is expected to increase by 0.3709 deaths per 100,000 people. The p-value for Total_Chemical_Expenditure is 0.241, which is above the significance level (0.05). This means the effect of Total Chemical Expenditure on PD mortality rate is not statistically significant in this model.
+
+
+
+# III. Aim 2b: Evaluate the association between the amount of acreage treated with three types of pesticides and PD mortality rates.
+
+### Look at totals and averages
+```{r}
+# create a summary table of the total acreage of treated farmland 
+# for different types of pesticides and the mortality rate
+summary_table <- df %>%
+  summarise(
+    Insecticide_No_Nema_Sum_Acres = 
+      sum(Insecticide_No_Nema_Treatment_Acres, na.rm = TRUE),
+    Insecticide_No_Nema_Avg_Percentage = 
+      mean(`Insecticide_No_Nema_Treatment_Percentage_(%)`, na.rm = TRUE),
+    Insecticide_No_Nema_SD_Percentage = 
+      sd(`Insecticide_No_Nema_Treatment_Percentage_(%)`, na.rm = TRUE),
+    
+    Insecticide_Nema_Sum_Acres = 
+      sum(Insecticide_Nema_Treatment_Acres, na.rm = TRUE),
+    Insecticide_Nema_Avg_Percentage = 
+      mean(`Insecticide_Nema_Treatment_Percentage_(%)`, na.rm = TRUE),
+    Insecticide_Nema_SD_Percentage = 
+      sd(`Insecticide_Nema_Treatment_Percentage_(%)`, na.rm = TRUE),
+    
+    Herbicide_Sum_Acres = 
+      sum(Herbicide_Treatment_Acres, na.rm = TRUE),
+    Herbicide_Avg_Percentage = 
+      mean(`Herbicide_Treatment_Percentage_(%)`, na.rm = TRUE),
+    Herbicide_SD_Percentage = 
+      sd(`Herbicide_Treatment_Percentage_(%)`, na.rm = TRUE),
+    
+    Fungicide_Sum_Acres = 
+      sum(Fungicide_Treatment_Acres, na.rm = TRUE),
+    Fungicide_Avg_Percentage = 
+      mean(`Fungicide_Treatment_Percentage_(%)`, na.rm = TRUE),
+    Fungicide_SD_Percentage = 
+      sd(`Fungicide_Treatment_Percentage_(%)`, na.rm = TRUE),
+    
+    Mortality_Sum_Rate = sum(RATE, na.rm = TRUE),
+    Mortality_Avg_Rate = mean(RATE, na.rm = TRUE),
+    Mortality_SD_Rate = sd(RATE, na.rm = TRUE)
+  ) 
+
+print(summary_table)
+
+(correlations <- data.frame(
+  Treatment_Type = c("Insecticide No Nema Acres", 
+                     "Insecticide No Nema Percentage",
+                     "Insecticide Nema Acres", 
+                     "Insecticide Nema Percentage",
+                     "Herbicide Acres", 
+                     "Herbicide Percentage",
+                     "Fungicide Acres", 
+                     "Fungicide Percentage"),
+  Spearman_Correlation_with_Mortality = c(
+    cor(df$Insecticide_No_Nema_Treatment_Acres, df$RATE, 
+        method = "spearman", use = "complete.obs"),
+    cor(df$`Insecticide_No_Nema_Treatment_Percentage_(%)`, 
+        df$RATE, method = "spearman", use = "complete.obs"),
+
+    cor(df$Insecticide_Nema_Treatment_Acres, df$RATE, 
+        method = "spearman", use = "complete.obs"),
+    cor(df$`Insecticide_Nema_Treatment_Percentage_(%)`, 
+        df$RATE, method = "spearman", use = "complete.obs"),
+
+    cor(df$Herbicide_Treatment_Acres, df$RATE, 
+        method = "spearman", use = "complete.obs"),
+    cor(df$`Herbicide_Treatment_Percentage_(%)`, df$RATE, 
+        method = "spearman", use = "complete.obs"),
+
+    cor(df$Fungicide_Treatment_Acres, df$RATE, 
+        method = "spearman", use = "complete.obs"),
+    cor(df$`Fungicide_Treatment_Percentage_(%)`, 
+        df$RATE, method = "spearman", use = "complete.obs")
+  )
+))
+
+kable(correlations, caption = "Spearman Correlation Matrix")
+```
+
+```{r}
+correlations_long <- correlations %>%
+  pivot_longer(cols = Spearman_Correlation_with_Mortality, 
+               names_to = "Correlation_Type", values_to = "Correlation_Value")
+
+ggplot(correlations_long, aes(x = Treatment_Type, y = Correlation_Value, 
+                              fill = Correlation_Value)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, name = "Spearman Correlation") +
+  labs(
+    title = "Spearman Correlation between Treatment and Mortality Rate",
+    x = "Pesticide Treatment",
+    y = "Spearman Correlation with Mortality Rate"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+
+Interpretation: There is no clear association between these pesticide treatments (measured as total acreage and percentage of farmland treated) with PD mortality rate.
+
+## 
+
+```{r}
+cor_data <- df %>%
+  dplyr::select(
+    Total_Acres,
+    Insecticide_No_Nema_Treatment_Acres,
+    `Insecticide_No_Nema_Treatment_Percentage_(%)`,
+    Insecticide_Nema_Treatment_Acres,
+    `Insecticide_Nema_Treatment_Percentage_(%)`,
+    Herbicide_Treatment_Acres,
+    `Herbicide_Treatment_Percentage_(%)`,
+    Fungicide_Treatment_Acres,
+    `Fungicide_Treatment_Percentage_(%)`,
+    DEATHS
+  )
+
+cor_data <- cor_data %>% mutate(across(everything(), as.numeric))
+
+# Compute Spearman correlation matrix
+cor_matrix <- cor(cor_data, method = "spearman", use = "complete.obs")
+
+# Display the correlation matrix
+print(cor_matrix)
+
+colnames(cor_matrix) <- c(
+  "Total Acres", "Insect No Nema Acres", "Insect No Nema %",
+  "Insect Nema Acres", "Insect Nema %", "Herb Acres", "Herb %",
+  "Fung Acres", "Fung %", "Deaths"
+)
+rownames(cor_matrix) <- c(
+  "Total Acres", "Insect No Nema Acres", "Insect No Nema %",
+  "Insect Nema Acres", "Insect Nema %", "Herb Acres", "Herb %",
+  "Fung Acres", "Fung %", "Deaths"
+)
+kable(cor_matrix, caption = "Spearman Correlation Matrix")
+```
+very weak to weak correlation of some treatment measurements and PD mortality
+
