@@ -16,6 +16,19 @@ Output:
 
 * Statistical testing results (correlation plot)  
 * Maps displaying metrics pertaining to Aim 1
+   
+**QBS181\_ProjectAim2.pdf**  
+Format: PDF (knitted from R Markdown, .rmd file also provided)  
+Purpose:
+
+* To merge the pre-processed 2022 USDA data with the CDC mortality rate data frame.  
+* Conduct data analysis for Aim 2 of the project.
+
+Output:
+
+* A series of visualizations (plots) and summary tables.  
+* Statistical testing results.  
+* Regression models.
 
 **Ag\_Data\_Clean\_Final.xlsx**  
 Format: Excel  
@@ -30,16 +43,3 @@ Output:
 * A series of exploratory data analysis plots and maps.  
 * A cleaned data sheet, ready for merging with the CDC mortality rate data frame.
 
-   
-**QBS-181-Final-Project-Aim-2--Say-OK\_Final.pdf**  
-Format: PDF (knitted from R Markdown, .rmd file also provided)  
-Purpose:
-
-* To merge the pre-processed 2022 USDA data with the CDC mortality rate data frame.  
-* Conduct data analysis for Aim 2 of the project.
-
-Output:
-
-* A series of visualizations (plots) and summary tables.  
-* Statistical testing results.  
-* Regression models. 
